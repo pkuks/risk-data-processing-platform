@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: risk-data-processing-platform
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/risk_db
+    username: risk_user
+    password: risk_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
+
+server:
+  port: 8081

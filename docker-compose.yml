@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16
+
+    container_name: risk-postgres
+
+    environment:
+      POSTGRES_DB: risk_db
+      POSTGRES_USER: risk_user
+      POSTGRES_PASSWORD: risk_password
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: risk_pgadmin_web
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      - "9091:80"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
