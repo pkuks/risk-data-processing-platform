@@ -3,8 +3,11 @@ package com.example.capitalmarkets.riskdataprocessing.config;
 import com.example.capitalmarkets.riskdataprocessing.model.TradeInput;
 import com.example.capitalmarkets.riskdataprocessing.model.TradeRiskResult;
 import com.example.capitalmarkets.riskdataprocessing.service.TradeRiskProcessor;
+import com.example.capitalmarkets.riskdataprocessing.service.TradeRiskSkipListener;
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.SkipListener;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
@@ -27,13 +30,23 @@ public class RiskBatchConfig {
             PlatformTransactionManager transactionManager,
             FlatFileItemReader<TradeInput> tradeReader,
             TradeRiskProcessor tradeRiskProcessor,
-            JdbcBatchItemWriter<TradeRiskResult> tradeRiskWriter){
+            JdbcBatchItemWriter<TradeRiskResult> tradeRiskWriter,
+            TradeRiskSkipListener skipListener){
 
         return new StepBuilder("tradeRiskStep", jobRepository)
                 .<TradeInput, TradeRiskResult>chunk(1000, transactionManager)
                 .reader(tradeReader)
                 .processor(tradeRiskProcessor)
                 .writer(tradeRiskWriter)
+                .faultTolerant()
+                .skip(IllegalArgumentException.class)
+                .skip(org.springframework.dao.DataIntegrityViolationException.class)
+                .skipLimit(100)
+                // Explicitly register the step lifecycle listener role
+                .listener((StepExecutionListener) skipListener)
+                // Explicitly register the item skip listener role
+                .listener((SkipListener<TradeInput, TradeRiskResult>) skipListener)
+                //.listener(skipListener)
                 .build();
     }
 
