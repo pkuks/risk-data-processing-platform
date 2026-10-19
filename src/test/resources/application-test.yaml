@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    # Ephemeral in-memory database mimicking PostgreSQL behavior
+    url: jdbc:h2:mem:risk_test_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # Changes the SQL dialect so Hibernate translates queries nicely to H2
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: true
+    clean-disabled: false # Allows tests to drop and recreate the H2 schema cleanly
+
+  batch:
+    jdbc:
+      initialize-schema: always # Generates Spring Batch infrastructure tables on startup
+
+# Custom domain configuration mapping to your updated dynamic reader path
+risk:
+  batch:
+    input:
+      path: input/trades-test.csv
+    restart-test:
+      enabled: false
+      trade-id: TRD009
