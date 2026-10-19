@@ -14,12 +14,16 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.support.SynchronizedItemStreamReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.LocalDate;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 public class RiskBatchConfig {
@@ -28,14 +32,16 @@ public class RiskBatchConfig {
     public Step tradeRiskStep(
             JobRepository jobRepository,
             PlatformTransactionManager transactionManager,
+            SynchronizedItemStreamReader<TradeInput> synchronizedTradeReader,
             FlatFileItemReader<TradeInput> tradeReader,
             TradeRiskProcessor tradeRiskProcessor,
             JdbcBatchItemWriter<TradeRiskResult> tradeRiskWriter,
-            TradeRiskSkipListener skipListener){
+            TradeRiskSkipListener skipListener,
+            TaskExecutor batchTaskExecutor){
 
         return new StepBuilder("tradeRiskStep", jobRepository)
                 .<TradeInput, TradeRiskResult>chunk(1000, transactionManager)
-                .reader(tradeReader)
+                .reader(synchronizedTradeReader)
                 .processor(tradeRiskProcessor)
                 .writer(tradeRiskWriter)
                 .faultTolerant()
@@ -47,6 +53,8 @@ public class RiskBatchConfig {
                 // Explicitly register the item skip listener role
                 .listener((SkipListener<TradeInput, TradeRiskResult>) skipListener)
                 //.listener(skipListener)
+                .stream(tradeReader)
+                .taskExecutor(batchTaskExecutor)
                 .build();
     }
 
@@ -64,4 +72,16 @@ public class RiskBatchConfig {
         //@Value("#{jobParameters['businessDate']}") String businessDate) {
             return new TradeRiskProcessor(businessDate);
     }
+
+    @Bean
+    public TaskExecutor batchTaskExecutor(){
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("RiskBatchThread-");
+        executor.initialize();
+        return executor;
+    }
+
 }
