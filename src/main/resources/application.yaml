@@ -26,3 +26,11 @@ spring:
 
 server:
   port: 8081
+
+risk:
+  batch:
+    input:
+      path: input/trades.csv
+    restart-test:
+      enabled: false
+      trade-id: TRD009
