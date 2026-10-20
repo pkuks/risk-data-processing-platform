@@ -2,6 +2,7 @@ package com.example.capitalmarkets.riskdataprocessing.config;
 
 import com.example.capitalmarkets.riskdataprocessing.model.TradeInput;
 import com.example.capitalmarkets.riskdataprocessing.model.TradeRiskResult;
+import com.example.capitalmarkets.riskdataprocessing.service.ReferenceDataClient;
 import com.example.capitalmarkets.riskdataprocessing.service.TradeRiskProcessor;
 import com.example.capitalmarkets.riskdataprocessing.service.TradeRiskSkipListener;
 import org.springframework.batch.core.Job;
@@ -21,6 +22,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import java.time.LocalDate;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -47,6 +50,8 @@ public class RiskBatchConfig {
                 .faultTolerant()
                 .skip(IllegalArgumentException.class)
                 .skip(org.springframework.dao.DataIntegrityViolationException.class)
+                .skip(HttpClientErrorException.class) // ◄─ Fixes the 404 Not Found error
+                .skip(RestClientException.class)       // ◄─ Safety net for other network/client errors
                 .skipLimit(100)
                 // Explicitly register the step lifecycle listener role
                 .listener((StepExecutionListener) skipListener)
@@ -68,9 +73,10 @@ public class RiskBatchConfig {
     @Bean
     @StepScope
     public TradeRiskProcessor tradeRiskProcessor(
-            @Value("#{jobParameters['businessDate']}") LocalDate businessDate){
+            @Value("#{jobParameters['businessDate']}") LocalDate businessDate,
+            ReferenceDataClient referenceDataClient){
         //@Value("#{jobParameters['businessDate']}") String businessDate) {
-            return new TradeRiskProcessor(businessDate);
+            return new TradeRiskProcessor(businessDate, referenceDataClient);
     }
 
     @Bean
